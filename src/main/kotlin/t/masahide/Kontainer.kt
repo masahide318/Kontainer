@@ -1,47 +1,58 @@
 package t.masahide
 
-object Kontainer {
+private object Kontainer {
 
-    class Container(val provider : ()->Any){
-        val obj : Any by lazy {
+    class Container(val provider: () -> Any) {
+        val instance: Any by lazy {
             provider.invoke()
         }
-
     }
-    private val container = mutableMapOf<String,Container>()
 
-    fun put(name:String,any: ()->Any){
-        if(container.contains(name)){
-            throw Exception("$name already exists")
+    private val container = mutableMapOf<String, Container>()
+    fun register(name: String, provider: () -> Any) {
+        if (container.contains(name)) {
+            throw Exception("$name already exists. call unset")
         }
-        container.put(name, Container { any })
-    }
-
-
-    @Suppress("UNCHECKED_CAST")
-    fun <T> get( name:String ): T {
-
-        val containerObj = container[name] ?: throw Exception("you must pu $name object before call get")
-
-        return containerObj.obj as T
-
+        container.put(name, Container (provider))
     }
 
     @Suppress("UNCHECKED_CAST")
-    fun <T> remakeInstance(name : String) : T{
-        val provider = container[name]?.provider ?: throw Exception("you must put $name object before call remakeInstance")
-        remove(name)
-        put(name,provider)
-        return get(name)
+    fun <T> getSingleton(name: String): T {
+        val containerObj = container[name] ?: throw Exception("you must register $name before call getSingleton")
+        return containerObj.instance as T
     }
 
+    @Suppress("UNCHECKED_CAST")
+    fun <T> get(name: String): T {
+        val containerObj = container[name] ?: throw Exception("you must register $name before call get")
+        return containerObj.provider.invoke() as T
+    }
 
-    fun remove(name:String){
+    fun unset(name: String) {
         container.remove(name)
     }
 
-    fun clear(){
+    fun clear() {
         container.clear()
     }
+}
 
+fun koUnset(name: String) {
+    Kontainer.unset(name)
+}
+
+fun <T> koInject(name: String): T {
+    return Kontainer.get(name)
+}
+
+fun <T> koInjectSingleton(name: String): T {
+    return Kontainer.getSingleton(name)
+}
+
+fun koRegister(name: String, callable: () -> Any) {
+    Kontainer.register(name, callable)
+}
+
+fun koClear() {
+    Kontainer.clear()
 }
